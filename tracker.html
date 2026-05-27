@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Трекер">
+<title>Трекер привычек</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface2: #F0EDE6;
+    --accent: #5C7A5E;
+    --text: #2C2A24;
+    --text2: #7A7670;
+    --text3: #A8A49E;
+    --border: rgba(44,42,36,0.1);
+    --border2: rgba(44,42,36,0.18);
+    --done-bg: #5C7A5E;
+    --done-text: #fff;
+    --skip-bg: #F0EDE6;
+    --skip-text: #A8A49E;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --warn: #B85A1A;
+    --warn-bg: #FDF0E6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); }
+  body { font-family: 'DM Sans', sans-serif; color: var(--text); background: var(--bg); min-height: 100vh; padding-bottom: 60px; }
+
+  .app-header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 20px 24px 18px; position: sticky; top: 0; z-index: 10;
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; gap: 16px;
+  }
+  .app-header h1 {
+    font-family: 'Spectral', serif; font-size: 22px; font-weight: 400;
+    color: var(--text); letter-spacing: 0.01em;
+  }
+  .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: none; border-radius: var(--radius-sm);
+    padding: 8px 16px; font-size: 13px; font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: opacity 0.15s, transform 0.1s; white-space: nowrap;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:active { transform: scale(0.97); }
+  .btn-export { background: #4A6FA5; color: white; }
+  .btn-import { background: var(--surface2); color: var(--text2); border: 1px solid var(--border2); }
+
+  .week-nav { display: flex; align-items: center; gap: 10px; }
+  .nav-arrow {
+    background: var(--surface2); border: none; border-radius: var(--radius-sm);
+    width: 36px; height: 36px; cursor: pointer; font-size: 18px; color: var(--text2);
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s; flex-shrink: 0;
+  }
+  .nav-arrow:hover { background: var(--border2); }
+  .week-label { font-size: 14px; color: var(--text2); flex: 1; text-align: center; }
+  .btn-today {
+    background: var(--accent); color: white; border: none;
+    border-radius: var(--radius-sm); padding: 8px 16px;
+    font-size: 13px; font-weight: 500; font-family: 'DM Sans', sans-serif;
+    cursor: pointer; transition: opacity 0.15s; flex-shrink: 0;
+  }
+  .btn-today:hover { opacity: 0.85; }
+
+  .stats-bar {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 10px; padding: 16px 24px; background: var(--bg);
+  }
+  .stat {
+    background: var(--surface); border-radius: var(--radius-sm);
+    padding: 12px 14px; border: 1px solid var(--border);
+  }
+  .stat-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; line-height: 1.3; }
+  .stat-value { font-size: 20px; font-weight: 500; color: var(--text); }
+
+  .nutrient-section { padding: 0 24px 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .nutrient-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+  }
+  .nutrient-card.warn { border-color: rgba(184,90,26,0.35); background: var(--warn-bg); }
+  .nutrient-title { font-size: 11px; font-weight: 500; color: var(--text2); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .nutrient-nums { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; }
+  .nutrient-big { font-size: 26px; font-weight: 500; color: var(--text); }
+  .nutrient-unit { font-size: 12px; color: var(--text3); }
+  .nutrient-goal { font-size: 11px; color: var(--text3); margin-bottom: 10px; }
+  .progress-bar { background: var(--surface2); border-radius: 4px; height: 7px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; background: var(--accent); }
+  .progress-fill.warn { background: var(--warn); }
+  .progress-pct { font-size: 11px; color: var(--text3); margin-top: 5px; }
+  .warn-text { font-size: 11px; color: var(--warn); margin-top: 8px; line-height: 1.4; }
+
+  .table-scroll { overflow-x: auto; padding: 0 24px; }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 520px; }
+  thead th {
+    background: var(--surface); font-size: 11px; font-weight: 500; color: var(--text3);
+    padding: 10px 10px 8px; text-align: center;
+    border-bottom: 1px solid var(--border); letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  thead th.param-col { text-align: left; min-width: 180px; padding-left: 14px; }
+  tbody tr:nth-child(even) td { background: rgba(240,237,230,0.3); }
+  tbody tr td {
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+    vertical-align: middle; background: var(--surface); transition: background 0.1s;
+  }
+  tbody tr:hover td { background: rgba(240,237,230,0.5); }
+  tbody tr:nth-child(even):hover td { background: rgba(240,237,230,0.7); }
+  td.param-name { font-size: 13px; color: var(--text); padding-left: 14px; min-width: 180px; }
+  td.day-cell { text-align: center; min-width: 62px; }
+  td.today-cell { background: rgba(92,122,94,0.07) !important; }
+
+  .check-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1.5px solid var(--border2); background: none;
+    cursor: pointer; font-size: 14px;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: all 0.15s; color: var(--text3);
+  }
+  .check-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .check-btn.done { background: var(--done-bg); border-color: var(--done-bg); color: var(--done-text); }
+  .check-btn.skip { background: var(--skip-bg); border-color: transparent; color: var(--skip-text); }
+
+  .num-input {
+    width: 52px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 5px 4px; text-align: center; font-size: 13px;
+    font-family: 'DM Sans', sans-serif; background: transparent; color: var(--text);
+    transition: border-color 0.15s;
+  }
+  .num-input:focus { outline: none; border-color: var(--accent); }
+  .text-input {
+    width: 100%; border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 5px 8px; font-size: 12px; font-family: 'DM Sans', sans-serif;
+    background: transparent; color: var(--text); min-width: 90px;
+    transition: border-color 0.15s;
+  }
+  .text-input:focus { outline: none; border-color: var(--accent); }
+
+  .section-divider td {
+    background: var(--bg) !important; padding: 8px 14px 3px;
+    font-size: 10px; color: var(--text3); text-transform: uppercase;
+    letter-spacing: 0.06em; font-weight: 500; border-bottom: none;
+  }
+
+  .toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: white; padding: 11px 22px;
+    border-radius: 20px; font-size: 13px; z-index: 100;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+  #importFile { display: none; }
+
+  @media (max-width: 700px) {
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .nutrient-section { grid-template-columns: 1fr; }
+    .header-top { flex-direction: column; align-items: flex-start; }
+    .app-header, .stats-bar, .nutrient-section, .table-scroll { padding-left: 16px; padding-right: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-top">
+    <h1>Трекер привычек и состояний</h1>
+    <div class="header-actions">
+      <button class="btn btn-export" onclick="exportData()">⬇ Экспорт</button>
+      <button class="btn btn-import" onclick="document.getElementById('importFile').click()">⬆ Импорт</button>
+      <input type="file" id="importFile" accept=".json" onchange="importData(event)">
+    </div>
+  </div>
+  <div class="week-nav">
+    <button class="nav-arrow" onclick="shiftWeek(-1)">&#8592;</button>
+    <span class="week-label" id="weekLabel"></span>
+    <button class="nav-arrow" onclick="shiftWeek(1)">&#8594;</button>
+    <button class="btn-today" onclick="goToday()">Сегодня</button>
+  </div>
+</div>
+
+<div class="stats-bar" id="statsBar"></div>
+<div class="nutrient-section" id="nutrientSection"></div>
+<div class="table-scroll"><table id="trackerTable"></table></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const PARAMS = [
+  { section: 'Тело' },
+  { key: 'yoga',     label: 'Йога 🧘',                   type: 'check' },
+  { key: 'vitd',     label: 'Витамин D 🌿 (МЕ)',         type: 'num', placeholder: '2000' },
+  { key: 'chia',     label: 'Семена чиа 🌱',              type: 'check' },
+  { key: 'nuts',     label: 'Орехи бразильские (шт)',     type: 'num', placeholder: '1' },
+  { key: 'folic',    label: 'Фолиевая кислота',           type: 'check' },
+  { key: 'water',    label: 'Вода 💧 (стаканы)',          type: 'num', placeholder: '8' },
+  { key: 'steps',    label: 'Шаги 🚶',                   type: 'num', placeholder: '8000' },
+  { key: 'outside',  label: 'Выход на улицу ☀️',         type: 'check' },
+  { section: 'Состояние' },
+  { key: 'mood',     label: 'Самочувствие (0–10)',        type: 'num', max: 10 },
+  { key: 'anxiety',  label: 'Тревожность (0–10)',         type: 'num', max: 10 },
+  { key: 'sleep',    label: 'Качество сна (0–10)',        type: 'num', max: 10 },
+  { key: 'cycle',    label: 'День цикла 🌙',             type: 'num', placeholder: '1' },
+  { section: 'Работа' },
+  { key: 'consult',  label: 'Консультации (кол-во)',      type: 'num' },
+  { key: 'thesis',   label: 'Диссертация 📖 (часы)',     type: 'num', placeholder: '0' },
+  { section: 'Жизнь' },
+  { key: 'creative', label: 'Творчество 🎨',              type: 'check' },
+  { key: 'sex',      label: 'Секс 💜',                    type: 'check' },
+  { section: 'Заметки' },
+  { key: 'notes',    label: 'Обстоятельства / Примечания', type: 'text' },
+];
+
+const SE_PER_NUT = 70;
+const SE_DAILY_NORM = 55;
+const SE_MAX_WEEK = 400 * 7;
+const VITD_DAILY_GOAL = 2000;
+const VITD_WEEK_GOAL = VITD_DAILY_GOAL * 7;
+const STEPS_GOAL = 8000;
+const WATER_GOAL = 8;
+
+const DAY_NAMES = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+const MONTH_NAMES = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+
+let weekOffset = 0;
+let data = {};
+try { data = JSON.parse(localStorage.getItem('habitTrackerData') || '{}'); } catch(e) {}
+
+function dateKey(d) { return d.toISOString().slice(0,10); }
+function isToday(d) { return dateKey(d) === dateKey(new Date()); }
+
+function getWeekDates(offset) {
+  const today = new Date();
+  const dow = today.getDay();
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1) + offset * 7);
+  return Array.from({length: 7}, (_, i) => {
+    const d = new Date(monday); d.setDate(monday.getDate() + i); return d;
+  });
+}
+
+function save() { try { localStorage.setItem('habitTrackerData', JSON.stringify(data)); } catch(e) {} }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function exportData() {
+  if (Object.keys(data).length === 0) { showToast('Нет данных для экспорта'); return; }
+  const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), version: 1, data }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `tracker-${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+  showToast('Данные экспортированы ✓');
+}
+
+function importData(event) {
+  const file = event.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      data = Object.assign({}, data, parsed.data || parsed);
+      save(); render();
+      showToast('Данные загружены и объединены ✓');
+    } catch(err) { showToast('Ошибка: неверный формат файла'); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function toggleCheck(key, dk) {
+  if (!data[dk]) data[dk] = {};
+  const cur = data[dk][key];
+  data[dk][key] = cur === 'done' ? 'skip' : cur === 'skip' ? null : 'done';
+  save(); render();
+}
+
+function setVal(key, dk, val) {
+  if (!data[dk]) data[dk] = {};
+  data[dk][key] = val; save();
+}
+
+function shiftWeek(dir) { weekOffset += dir; render(); }
+function goToday() { weekOffset = 0; render(); }
+
+function render() {
+  const days = getWeekDates(weekOffset);
+  const first = days[0], last = days[6];
+  document.getElementById('weekLabel').textContent =
+    `${first.getDate()} ${MONTH_NAMES[first.getMonth()]} — ${last.getDate()} ${MONTH_NAMES[last.getMonth()]} ${last.getFullYear()}`;
+
+  let moodS=0,moodC=0,anxS=0,anxC=0,sleepS=0,sleepC=0;
+  let yoga=0, totalNuts=0, totalVitD=0, totalSteps=0, stepsC=0, totalThesis=0, totalWater=0, waterC=0;
+
+  days.forEach(d => {
+    const r = data[dateKey(d)] || {};
+    if (r.mood!==undefined&&r.mood!==''){moodS+=+r.mood;moodC++;}
+    if (r.anxiety!==undefined&&r.anxiety!==''){anxS+=+r.anxiety;anxC++;}
+    if (r.sleep!==undefined&&r.sleep!==''){sleepS+=+r.sleep;sleepC++;}
+    if (r.yoga==='done') yoga++;
+    if (r.nuts!==undefined&&r.nuts!=='') totalNuts+=parseFloat(r.nuts)||0;
+    if (r.vitd!==undefined&&r.vitd!=='') totalVitD+=parseFloat(r.vitd)||0;
+    if (r.steps!==undefined&&r.steps!==''){totalSteps+=parseFloat(r.steps)||0; stepsC++;}
+    if (r.thesis!==undefined&&r.thesis!=='') totalThesis+=parseFloat(r.thesis)||0;
+    if (r.water!==undefined&&r.water!==''){totalWater+=parseFloat(r.water)||0; waterC++;}
+  });
+
+  // Stats — показываем среднее настроение, тревожность, сон, часы диссертации
+  document.getElementById('statsBar').innerHTML = `
+    <div class="stat"><div class="stat-label">Настроение</div><div class="stat-value">${moodC?(moodS/moodC).toFixed(1):'—'}</div></div>
+    <div class="stat"><div class="stat-label">Тревожность</div><div class="stat-value">${anxC?(anxS/anxC).toFixed(1):'—'}</div></div>
+    <div class="stat"><div class="stat-label">Качество сна</div><div class="stat-value">${sleepC?(sleepS/sleepC).toFixed(1):'—'}</div></div>
+    <div class="stat"><div class="stat-label">Диссертация (ч)</div><div class="stat-value">${totalThesis > 0 ? totalThesis.toFixed(1) : '—'}</div></div>
+  `;
+
+  // Nutrients + steps + water
+  const seTotal = Math.round(totalNuts * SE_PER_NUT);
+  const seWeekNorm = SE_DAILY_NORM * 7;
+  const sePct = Math.min(Math.round(seTotal / seWeekNorm * 100), 200);
+  const seOverLimit = seTotal > SE_MAX_WEEK;
+  const seNearLimit = seTotal > SE_MAX_WEEK * 0.7 && !seOverLimit;
+  const vitdPct = Math.min(Math.round(totalVitD / VITD_WEEK_GOAL * 100), 150);
+  const vitdDays = days.filter(d => { const r=data[dateKey(d)]||{}; return r.vitd!==undefined&&r.vitd!==''; }).length;
+  const stepsAvg = stepsC ? Math.round(totalSteps / stepsC) : 0;
+  const stepsPct = Math.min(Math.round(stepsAvg / STEPS_GOAL * 100), 150);
+  const waterAvg = waterC ? (totalWater / waterC).toFixed(1) : 0;
+  const waterPct = Math.min(Math.round(waterAvg / WATER_GOAL * 100), 150);
+
+  document.getElementById('nutrientSection').innerHTML = `
+    <div class="nutrient-card${seOverLimit?' warn':''}">
+      <div class="nutrient-title">Селен — бразильские орехи</div>
+      <div class="nutrient-nums"><span class="nutrient-big">${seTotal}</span><span class="nutrient-unit">мкг за неделю</span></div>
+      <div class="nutrient-goal">Норма: ${seWeekNorm} мкг/нед · Орехов: ${Math.round(totalNuts)} шт</div>
+      <div class="progress-bar"><div class="progress-fill${seOverLimit||seNearLimit?' warn':''}" style="width:${Math.min(sePct,100)}%"></div></div>
+      <div class="progress-pct">${sePct}% от недельной нормы</div>
+      ${seOverLimit?'<div class="warn-text">⚠️ Превышен безопасный предел. Не более 2–3 орехов в день.</div>':''}
+      ${seNearLimit?'<div class="warn-text">Приближаешься к верхней границе нормы.</div>':''}
+    </div>
+    <div class="nutrient-card">
+      <div class="nutrient-title">Витамин D</div>
+      <div class="nutrient-nums"><span class="nutrient-big">${Math.round(totalVitD).toLocaleString('ru')}</span><span class="nutrient-unit">МЕ за неделю</span></div>
+      <div class="nutrient-goal">Цель: ${VITD_WEEK_GOAL.toLocaleString('ru')} МЕ/нед · Принято ${vitdDays}/7 дней</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(vitdPct,100)}%"></div></div>
+      <div class="progress-pct">${vitdPct}% от недельной цели</div>
+    </div>
+    <div class="nutrient-card">
+      <div class="nutrient-title">Шаги 🚶</div>
+      <div class="nutrient-nums"><span class="nutrient-big">${stepsAvg ? stepsAvg.toLocaleString('ru') : '—'}</span><span class="nutrient-unit">в среднем/день</span></div>
+      <div class="nutrient-goal">Цель: ${STEPS_GOAL.toLocaleString('ru')} шагов/день · Всего за неделю: ${totalSteps ? totalSteps.toLocaleString('ru') : '—'}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(stepsPct,100)}%"></div></div>
+      <div class="progress-pct">${stepsAvg ? stepsPct + '% от цели' : 'Нет данных'}</div>
+    </div>
+    <div class="nutrient-card">
+      <div class="nutrient-title">Вода 💧</div>
+      <div class="nutrient-nums"><span class="nutrient-big">${waterAvg || '—'}</span><span class="nutrient-unit">стаканов/день</span></div>
+      <div class="nutrient-goal">Цель: ${WATER_GOAL} стаканов/день</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(waterPct,100)}%"></div></div>
+      <div class="progress-pct">${waterC ? waterPct + '% от цели' : 'Нет данных'}</div>
+    </div>
+  `;
+
+  // Table
+  const table = document.getElementById('trackerTable');
+  let html = '<thead><tr><th class="param-col">Параметр</th>';
+  days.forEach(d => {
+    const tc = isToday(d) ? ' today-cell' : '';
+    const bold = isToday(d) ? 'font-weight:600;color:#5C7A5E;' : '';
+    html += `<th class="${tc}" style="${bold}">${DAY_NAMES[d.getDay()]}<br><span style="font-size:12px;font-weight:400">${d.getDate()}.${String(d.getMonth()+1).padStart(2,'0')}</span></th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  PARAMS.forEach(p => {
+    if (p.section) { html += `<tr class="section-divider"><td colspan="8">${p.section}</td></tr>`; return; }
+    html += `<tr><td class="param-name">${p.label}</td>`;
+    days.forEach(d => {
+      const dk = dateKey(d);
+      const val = data[dk] ? data[dk][p.key] : null;
+      const tc = isToday(d) ? ' today-cell' : '';
+      html += `<td class="day-cell${tc}">`;
+      if (p.type === 'check') {
+        const state = val || '';
+        const cls = state==='done'?'done':state==='skip'?'skip':'';
+        const icon = state==='done'?'✓':state==='skip'?'–':'·';
+        html += `<button class="check-btn ${cls}" onclick="toggleCheck('${p.key}','${dk}')">${icon}</button>`;
+      } else if (p.type === 'num') {
+        const v = (val!==null&&val!==undefined&&val!=='')?val:'';
+        html += `<input class="num-input" type="number" min="0" max="${p.max||99999}" step="${p.max===10?1:0.5}" value="${v}" placeholder="${p.placeholder||'—'}" onchange="setVal('${p.key}','${dk}',this.value)">`;
+      } else if (p.type === 'text') {
+        const v = (val||'').replace(/"/g,'&quot;');
+        html += `<input class="text-input" type="text" value="${v}" placeholder="заметка..." onchange="setVal('${p.key}','${dk}',this.value)">`;
+      }
+      html += '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+render();
+</script>
+</body>
+</html>
